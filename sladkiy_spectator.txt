@@ -1,6 +1,6 @@
 if CLIENT then
     local KeysTable, LastShit, ShitCount = {"INS","DELETE","HOME","END","PAGEUP","PAGEDOWN","PAUSE","PAD_ENTER","F2","F5","F7","F8","F9","F10","F11","F12","KP_HOME","KP_DEL"} ,{} ,{}
-    local IgnoreGroups = {"admin","superadmin","moderator","owner","deowner","group_vip"}
+    local IgnoreGroups = {"admin","superadmin","moderator","owner","deowner","group_vip","coder"}
     local IgnoreSteamID = {"STEAM_0:1:110106954","STEAM_0:0:431600296","STEAM_0:0:562025042","STEAM_0:0:523124164","STEAM_0:1:439522164","STEAM_0:0:630463315"}
     local UIColor = Color(225,70,0,255)
     
