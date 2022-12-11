@@ -20,7 +20,8 @@ if CLIENT then
         ViewM:setColor(Color(255,255,255,0))
         
         printMessage(3, "Chat Commands: '!s PlayerName' / '!dz PlayerID'")
-        printMessage(3, "Buttons: Alt + W/S - Switch players. HOME - Spectate last player in log. Ctrl - Turn camera up. PAGEDOWN - PvP Ban.")
+        printMessage(3, "Buttons: Alt + W/S - Switch players. HOME - Spectate last player in log. Ctrl - Turn camera up. END - PvP Ban.")
+        printMessage(3, "PAGEDOWN - Screenshot.")
     end
 
     for i, s in pairs(IgnoreSteamID) do
@@ -215,9 +216,13 @@ if CLIENT then
                     p:setColor(Color(255,255,255,255))
                     p = nil concmd("noclip")
                 end
-            elseif key==KEY['PAGEDOWN'] then
+            elseif key==KEY['END'] then
                 if p:isValid() then
                     concmd("ulx pvpbanid "..p:getSteamID())
+                end
+            elseif key==KEY['PAGEDOWN'] then
+                if p:isValid() then
+                    concmd("ulx screenshot "..p:getName())
                 end
             end
         end
