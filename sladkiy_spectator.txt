@@ -1,0 +1,354 @@
+if CLIENT then
+    local KeysTable, LastShit, ShitCount = {"INS","DELETE","HOME","END","PAGEUP","PAGEDOWN","PAUSE","PAD_ENTER","F2","F5","F7","F8","F9","F10","F11","F12","KP_HOME","KP_DEL"} ,{} ,{}
+    local IgnoreGroups = {"admin","superadmin","moderator","owner","deowner","group_vip"}
+    local IgnoreSteamID = {"STEAM_0:1:110106954","STEAM_0:0:431600296","STEAM_0:0:562025042","STEAM_0:0:523124164","STEAM_0:1:439522164","STEAM_0:0:630463315"}
+    local UIColor = Color(225,70,0,255)
+    
+    local font = render.createFont("Roboto", 15, 400, true)
+    local Mat = render.createMaterial("vgui/gradient-u")
+    local Mat2 = render.createMaterial("vgui/gradient-d")
+    local X, Y = render.getResolution()
+    
+    local ind, alpha, ignore = 1, 0, false
+    local BTrace = {}
+    local ViewM ,p ,LLPlayers
+    local canSwitch = false
+    
+    if player() == owner() then
+        enableHud(nil, true)
+        ViewM = holograms.create(Vector(0), Angle(0),"models/props_lab/huladoll.mdl")
+        ViewM:setColor(Color(255,255,255,0))
+        
+        printMessage(3, "Chat Commands: '!s PlayerName' / '!dz PlayerID'")
+        printMessage(3, "Buttons: Alt + W/S - Switch players. HOME - Spectate last player in log. Ctrl - Turn camera up.")
+    end
+
+    for i, s in pairs(IgnoreSteamID) do
+        if player():getSteamID() == s then
+            ignore = true
+        end
+    end
+
+    for i, g in pairs(IgnoreGroups) do
+        if player():isUserGroup(g) then
+            ignore = true
+        end
+    end
+    
+    local alpha2 = 0
+    
+    net.receive("spect",function()
+        LastShit={} p = net.readEntity()
+        if !owner():isNoclipped() then concmd("noclip") end
+        
+        hook.add("drawhud","wallhack", function()
+            if p then
+                LLPlayers = find.allPlayers()
+                
+                render.setFont(font)
+                render.setColor(Color(0,0,0,255))
+                render.setMaterial(Mat2)
+                render.drawTexturedRect(X/2-50, Y-50, 100, 50)
+                render.drawTexturedRect(0, Y-70, X, 70)
+                render.setColor(UIColor:setA(255))
+                render.drawText(X/2, Y-20,"HP:"..p:getHealth().." | AR:"..p:getArmor(),TEXT_ALIGN['CENTER'])
+                render.drawText(X-5, Y-20,p:entIndex() .. ". " .. p:getName(),TEXT_ALIGN['RIGHT'])
+                
+                for i,locplayer in pairs(LLPlayers) do
+                    if locplayer != p and locplayer:isAlive() then
+                        local Ppos=(locplayer:getPos()+Vector(0,0,50)):toScreen()
+                        local Size=math.clamp(10000/(locplayer:getPos()-p:getPos()):getLength(),6,300)/2
+                        
+                        if Size<50 then
+                            render.setColor(Color(0,0,0,255,math.clamp(Size*50,0,255)))
+                            render.drawRect(Ppos['x']-Size+1, Ppos['y']-Size+1, Size*1.7, Size*1.7)
+                            render.drawText(Ppos['x']-Size+6, Ppos['y']-Size+1,locplayer:getName() ,TEXT_ALIGN['LEFT'])
+                            render.setColor(team.getColor(locplayer:getTeam()):setA(math.clamp(Size*50,0,255)))
+                            render.drawText(Ppos['x']-Size+7, Ppos['y']-Size,locplayer:getName() ,TEXT_ALIGN['LEFT']) 
+                            render.drawRect(Ppos['x']-Size, Ppos['y']-Size, Size*1.7, Size*1.7)
+                        end
+                    end
+                end
+                
+                if alpha2>0 then
+                    local pp1 = BTrace[1]:toScreen()
+                    local pp2 = BTrace[2]:toScreen()
+                    render.setColor(Color(255,0,0,alpha2))
+                    render.drawLine(pp1['x'], pp1['y'], pp2['x'], pp2['y'])
+                    render.drawRect(pp2['x']-2, pp2['y']-2, 4, 4)
+                    alpha2 = math.clamp(alpha2-0.5,0,255)
+                end
+                
+                if !input.isKeyDown(KEY['LALT']) then
+                    render.setColor(UIColor)
+                    render.drawRectFast(X/2-2, Y/2-2, 4, 4)
+                    canSwitch = false
+                elseif LLPlayers[ind] then
+                    canSwitch = true
+                    
+                    local Ly = Y/2-10
+                    local Lx = X/2-75
+                    
+                    render.setColor(Color(0, 0, 0, 200))
+                    render.drawRoundedBox(2, Lx, Ly, 150, 20)
+                    render.setColor(Color(0, 0, 0, 190))
+                    
+                    if LLPlayers[ind-1] then
+                        render.setMaterial(Mat2)
+                        render.drawTexturedRect(Lx, Ly-110, 150, 110)
+                    end
+                    
+                    if LLPlayers[ind+1] then    
+                        render.setMaterial(Mat)
+                        render.drawTexturedRect(Lx, Ly+20, 150, 110)     
+                    end
+                            
+                    render.setColor(team.getColor(LLPlayers[ind]:getTeam()))
+                    render.drawRectOutline(Lx, Ly, 150, 20, 1)
+                    
+                    local otstup = 2
+                    
+                    for iP = 0, 4 do    
+                        Plyer = LLPlayers[ind-iP]
+                        if Plyer then
+                            render.setColor(team.getColor(Plyer:getTeam()):setA(255+otstup*2.5))
+                            render.drawSimpleText(Lx+75, Ly+otstup,Plyer:entIndex() .. ". " .. string.sub(Plyer:getName(), 1, 17), TEXT_ALIGN['CENTER'])
+                            otstup=otstup-20
+                        end  
+                    end
+                                        
+                    otstup = 20
+                    for iP = 1, 4 do    
+                        Plyer = LLPlayers[ind+iP]
+                        if Plyer then
+                            render.setColor(team.getColor(Plyer:getTeam()):setA(200-otstup*2.2))
+                            render.drawSimpleText(Lx+75, Ly+otstup,Plyer:entIndex() .. ". " .. string.sub(Plyer:getName(), 1, 17), TEXT_ALIGN['CENTER'])
+                            otstup=otstup+20
+                        end  
+                    end
+                else
+                    ind=1
+                end
+            end
+        end)
+        
+        local function sstop()
+            ViewM:setPos(Vector(0))
+            net.start("spect") net.send()
+            hook.remove("calcview","spec")
+            hook.remove("drawhud","wallhack")
+        end
+
+        net.receive("bullet",function()
+            BTrace = net.readTable()
+            local Hit = trace.trace(BTrace[1],BTrace[2],{p})
+            BTrace[2]=Hit['HitPos']
+            alpha2 = 255
+        end)
+        
+        net.receive("newVM",function()
+            ViewM:setModel(net.readString())
+        end)
+        
+        hook.add("calcview","spec" ,function()
+            if p then
+                if p:isValid() then
+                    p:setColor(Color(255,255,255,0))
+                    local AWep = p:getActiveWeapon()
+                    local Plpos = p:getEyePos()
+                    local Plang = p:getEyeAngles()
+                    
+                    if AWep:isValid() then AWep:setColor(Color(255,255,255,0)) end
+                    if p:isAlive() and !p:inVehicle() then ViewM:setColor(Color(255,255,255,100)) else
+                        ViewM:setColor(Color(0,0,0,0))
+                    end
+                    
+                    ViewM:setPos(Plpos) ViewM:setAngles(Plang)
+
+                    return {origin = Plpos,angles = Plang,fov = owner():getFOV(),drawviewer = true}
+                else
+                    sstop()
+                    return
+                end
+            else
+                sstop()
+                return
+            end
+        end)
+    end)
+
+    hook.add("inputPressed","", function(key)
+        if !ignore then
+            for i , k in pairs(KeysTable) do
+                if key == KEY[k] then
+                    if !ShitCount[k] then ShitCount[k]=1 else ShitCount[k]=ShitCount[k]+1 end
+                    net.start("skey")
+                        net.writeTable({player():getName(),k,ShitCount[k]})
+                    net.send()
+                end
+            end
+        end
+
+        if player()==owner() then
+            if input.isKeyDown(KEY['HOME']) and LastShit[1] then
+                concmd("say !s "..LastShit[1][1])
+            end
+        end
+
+        if p then
+            if input.isKeyDown(KEY['CTRL']) then
+                net.start("cmove") net.send()
+            end
+            
+            if canSwitch then
+                if key==KEY['W'] then
+                    ind=math.clamp(ind-1, 1, table.count(LLPlayers)) 
+                    p:setColor(Color(255,255,255,255)) p = nil
+                    concmd("say !s "..LLPlayers[ind]:getName()) 
+                elseif key==KEY['S'] then
+                    ind=math.clamp(ind+1, 1, table.count(LLPlayers)) 
+                    p:setColor(Color(255,255,255,255)) p = nil
+                    concmd("say !s "..LLPlayers[ind]:getName())
+                end
+            elseif key==KEY['W'] then
+                if p:isValid() then
+                    p:setColor(Color(255,255,255,255))
+                    p = nil concmd("noclip")
+                end
+            end
+        end
+    end)
+    
+    local function NewSht(Tx)
+        printConsole(UIColor, Tx[1]..": "..Tx[2].." (x"..Tx[3]..")")
+        
+        for i, sht in pairs(LastShit) do
+            if sht[1] == Tx[1] and sht[2] == Tx[2] then
+                table.remove(LastShit, i)
+            end
+        end
+        
+        table.forceInsert(LastShit,Tx)
+        if table.count(LastShit) > 10 then
+            table.remove(LastShit, 1)
+        end
+        
+        owner():emitSound("ui/buttonrollover.wav")
+        alpha = 1000
+    end
+    
+    net.receive("skey",function()
+        local Tx = net.readTable()
+        if p then
+            if Tx[1] == p:getName() then
+                NewSht(Tx)
+            end
+        else
+            NewSht(Tx)
+        end
+    end)
+
+    hook.add("drawhud", "kinfo", function()
+        if player() == owner() then
+            if alpha>0 then
+                local otstup2 = 7
+                
+                render.setColor(Color(0,0,0,math.clamp(alpha,0,255)))
+                render.setMaterial(Mat)
+                render.drawTexturedRect(X/2-100, 0, 200, 260)
+                render.setMaterial(Mat2)
+                render.drawTexturedRect(X/2-80, Y-50, 160, 50)
+                
+                for i, sht in pairs(table.reverse(LastShit)) do    
+                    render.setColor(UIColor:setA(math.clamp(alpha,0,255)-otstup2))
+                    render.setFont(font) render.drawText(X/2, otstup2, sht[1]..": "..sht[2].." ("..sht[3].."x)",TEXT_ALIGN['CENTER'])
+                    otstup2=otstup2+20
+                end
+                
+                render.drawText(X/2, Y-20,"Press \"HOME\" to switch.",TEXT_ALIGN['CENTER'])
+                
+                alpha = math.clamp(alpha-5,0,1000)
+            end
+            
+            render.setColor(Color(210,0,0,255))
+            render.drawText(5, Y-18, "Admin Mode",TEXT_ALIGN['LEFT'])
+        end
+    end)
+else
+    local LastPosition
+    local CurrentPlayer
+    
+    hook.add("PlayerSay","chatcontr",function(ply,text)
+        if ply == owner() and text:sub(1, 3)=="!s " or text:sub(1, 4)=="!dz " then
+            local player
+            local LLPlayers = find.allPlayers()
+            
+            if text:sub(1, 3)=="!s " then
+                player = find.playersByName(text:sub(4))[1]
+            elseif text:sub(1, 4)=="!dz " then
+                for i,locplayer in pairs(LLPlayers) do
+                    if tonumber(text:sub(5)) == locplayer:entIndex() then
+                        player = locplayer
+                    end
+                end
+            end
+             
+            if player then 
+                LastPosition=owner():getPos()
+                CurrentPlayer=player
+                
+                net.start("spect")
+                    net.writeEntity(player)
+                net.send(owner())
+                
+                local model = CurrentPlayer:getViewModel():getModel()
+                if model then
+                    net.start("newVM")
+                        net.writeString(string.replace(model, "c_", "v_"))
+                    net.send(owner())
+                end
+                
+                owner():setPos(Vector(0))
+            else
+                printHud(owner(), "Invalid.")
+            end
+            return ""
+        end    
+    end)
+    
+    hook.add("PlayerSwitchWeapon","pvm",function(plyr)
+        if plyr == CurrentPlayer then
+            timer.simple(0.3,function()
+                net.start("newVM")
+                    net.writeString(string.replace(CurrentPlayer:getViewModel():getModel(), "c_", "v_"))
+                net.send(owner())
+            end)
+        end
+    end)
+
+    hook.add("EntityFireBullets","",function(Ent,DT)
+        if CurrentPlayer == Ent then
+            net.start("bullet")
+                net.writeTable({DT['Src']+Vector(0,0,-4),DT['Src']+DT['Dir']*25000})
+            net.send(owner())
+        end
+    end)
+
+    net.receive("cmove",function()
+        if CurrentPlayer then
+            CurrentPlayer:setEyeAngles(Angle(-90,0,0))
+        end
+    end)
+
+    net.receive("skey",function()
+        net.start("skey")
+            net.writeTable(net.readTable())
+        net.send(owner())
+    end)
+    
+    net.receive("spect",function()
+        owner():setPos(LastPosition)
+    end)
+    
+    chip():setNoDraw(true)
+end
